@@ -1,0 +1,50 @@
+# Docker Compose file for the Docker/VPS deployment mode described in
+# README.md and HOSTING.md. Builds from the included Dockerfile, keeps
+# health checks and media/file-link traffic on separate ports, and persists
+# all bot state (SQLite index, encrypted cookies, Telegram sessions, cache)
+# in a named volume across restarts and rebuilds.
+#
+# Usage:
+#   cp sample_config.env config.env
+#   # edit config.env with real API_ID / API_HASH / BOT_TOKEN / etc.
+#   docker compose up -d --build
+#   curl http://127.0.0.1:8080/healthz
+#   curl http://127.0.0.1:8080/readyz
+
+services:
+  bot:
+    build: .
+    container_name: r-teleswiftbot
+    restart: unless-stopped
+    env_file:
+      - config.env
+    environment:
+      # Separate ports for the health/readiness server and the file-link
+      # streamer, matching the "Docker or VPS mode" described in README.md.
+      # On a single-port PaaS host, leave these two unset instead so both
+      # services share the platform-provided PORT (see README.md).
+      HEALTH_HOST: 0.0.0.0
+      HEALTH_PORT: "8080"
+      FILE_URL_HOST: 0.0.0.0
+      FILE_URL_PORT: "8081"
+    ports:
+      - "8080:8080" # /healthz, /readyz
+      - "8081:8081" # /file/<token>/stream and /file/<token>/download
+    volumes:
+      - bot-data:/data/ytdlbot
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import os,urllib.request as u; u.urlopen('http://127.0.0.1:' + os.getenv('HEALTH_PORT','8080') + '/readyz', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  bot-data:
+    # Persists WORK_DIR (/data/ytdlbot): SQLite fallback index, encrypted
+    # cookies, voice-chat/restricted-session state, and temporary downloads.
+    driver: local

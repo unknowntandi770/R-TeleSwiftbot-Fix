@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: ytdl-telegram-bot
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /readyz
+    autoDeploy: true
+    envVars:
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: COOKIE_ENCRYPTION_KEY
+        generateValue: true
+      - key: PUBLIC_URL
+        sync: false
+      - key: HEALTH_PORT
+        value: "10000"
+      - key: FILE_URL_PORT
+        value: "10000"
+      - key: HEALTH_HOST
+        value: 0.0.0.0
+      - key: FILE_URL_HOST
+        value: 0.0.0.0
